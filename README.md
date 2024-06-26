@@ -9,8 +9,6 @@ This script runs on Linux and requires recent versions of the following software
 * shred (strongly recommended)
 * column
 
-Of this software, you typically only need to install pwgen: `sudo apt install pwgen`
-
 ## Installation
 1. Make the script executable: `chmod +x vxrail-pwgen.sh`
 2. Run the script: `./vxrail-pwgen.sh`
