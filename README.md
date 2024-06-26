@@ -1,2 +1,2 @@
 # vxrail-pwgen
-Bash script that generates passwords compatible with Dell VxRail.
+Bash script that generates passwords compatible with Dell VxRail components.
