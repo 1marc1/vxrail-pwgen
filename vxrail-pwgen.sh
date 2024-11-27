@@ -3,10 +3,16 @@
 # Language: bash
 # License: MIT (license details at the end of this file)
 # Copyright: 2024 Marc van Wieringen, Sydney, Australia
-version="2.2, 27 November 2024"
+version="2.2.1, 27 November 2024"
 program=`basename "${0}"`
 
 # Script that generates random passwords that meet VxRail requirements.
+
+######
+# Version 2.2.1 (27 November 2024) of this script makes it so that if the specified config file is not found, it
+# is assumed to be a filename only and an attempt is made to locate the file in the ~/.config/vxrail-pwgen
+# directory.
+
 
 ######
 # Version 2.2 (27 November 2024) of this script incorporates the ability to use a configuration file that contains pre-defined values.
@@ -475,8 +481,11 @@ read_configfile () {
   done
 
   if [ ! -f "${cfgfile}" ]; then
-    echo "Config file '${cfgfile}' does not exist."
-    exit 1
+    cfgfile="${HOME}/.config/vxrail-pwgen/${cfgfile}"
+    if [ ! -f "${cfgfile}"  ]; then
+      echo "Config file '${cfgfile}' does not exist."
+      exit 1
+    fi
   fi
   echo "Using config file: ${cfgfile}"
   source "${cfgfile}"
