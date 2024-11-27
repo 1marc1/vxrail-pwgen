@@ -3,10 +3,16 @@
 # Language: bash
 # License: MIT (license details at the end of this file)
 # Copyright: 2024 Marc van Wieringen, Sydney, Australia
-version="2.1, 26 June 2024"
+version="2.2, 27 November 2024"
 program=`basename "${0}"`
 
 # Script that generates random passwords that meet VxRail requirements.
+
+######
+# Version 2.2 (27 November 2024) of this script incorporates the ability to use a configuration file that contains pre-defined values.
+# For example:   $ vxrail-pwgen.sh -c CustomerABC.cfg
+# For details of the config file, run:   $ vxrail-pwgen.sh -c -h
+
 
 ######
 # Version 2.1 (26 June 2024) of this script incorporates Dell ToR and Management switches.
@@ -18,9 +24,6 @@ program=`basename "${0}"`
 # Username: Minimum of 1 character, maximum of 32 characters
 # Password: Minimum 9 characters, maximum 32 characters.
 
-######
-# Version 1.x (April 2024) of this script incorporates requirements listed here:
-# https://www.dell.com/support/kbdoc/en-au/000081763
 
 ######
 # Version 2.0 (24 June 2024) of this script adds checks found from the following locations:
@@ -198,6 +201,11 @@ program=`basename "${0}"`
 # iDRAC                                   root                                  asdfsd
 
 ################################################################################
+
+
+######
+# Version 1.x (April 2024) of this script incorporates requirements listed here:
+# https://www.dell.com/support/kbdoc/en-au/000081763
 
 
 ########## Initialise Default Values ##########
@@ -458,15 +466,34 @@ showdefaultpws () {
 }
 
 
+### Function that reads the content of the config file
+read_configfile () {
+  while getopts 'c:' flag > /dev/null 2>&1; do
+    case "${flag}" in
+      c) cfgfile="${OPTARG}";;
+    esac
+  done
+
+  if [ ! -f "${cfgfile}" ]; then
+    echo "Config file '${cfgfile}' does not exist."
+    exit 1
+  fi
+  echo "Using config file: ${cfgfile}"
+  source "${cfgfile}"
+}
+
+
 ### Function to display the help text
 helptext () {
 cat <<EOF
 vxrail-pwgen version $version
-Usage: $program [-h | --help] | [-v | --version] | [-d] | [OPTIONS]
+Usage: $program [-h | --help] | [-v | --version] | [-d] | [-c FILE] [OPTIONS]
 
   -h, --help       Prints this help text and exits
   -v, --version    Prints the version number and exits
   -d               Prints factory default passwords for all accounts
+  -c <config file> Specify a configuration file to use; use "-c -h" for details
+                   on how to use the config file
   
   OPTIONS
   -l=NUM, --length=NUM
@@ -533,13 +560,56 @@ EOF
 
 ### End function to display help text
 
+
+### Function to display the help text for using the config file
+configfile_helptext () {
+cat <<EOF
+The config file is used to store options for use by the vxrail-pwgen.sh script.
+Different customers have different password requirements. By capturing these
+requirements inside a config file, you can quickly and easily generate new sets
+of passwords for individual customers.
+
+The config file hold key/value pairs of the options that can be specified on the
+command line. You can choose to include one, more or all of the key/value pairs
+in your config file.
+
+The example configuration file below shows all possible options, configured to
+the default values.
+
+   $ cat example.cfg
+   defaultchars=10     # Password length                  -l=10
+   numhosts=3          # Number of hosts                  -n=3
+   includeswitches=0   # Include switches?                -s
+   esximgmtpwsame=1    # Management passwords the same?   mps=1
+   esxirootpwsame=1    # ESXi root passwords the same?    rps=1
+   idracpwsame=1       # iDRAC root passwords the same?   ips=1
+   swpwsame=1          # Switch passwords the same?       sps=1
+   externalvcenter=0   # Use external vCenter Server?     vcext=0
+
+Note that the comments in the example.cfg output above also show the command
+line argument to override a value specified in the config file.
+
+To use the values of the config file, run:
+   $ vxrail-pwgen.sh -c example.cfg
+
+You can override individual settings from the config file on the command line.
+For example, the config file specifies 3 hosts, to override this, run:
+   $ vxrail-pwgen.sh -c example.cfg -n=5
+EOF
+}
+
+### End function to display help text for using the config file
+
 ########## END FUNCTIONS ##########
 
 
 
 ### Parse command line options
 
-if [[ "$@" == *"-h"* ]] || [[ "$@" == *"--help"* ]]; then
+if [[ "$@" == *"-c"* ]] && ( [[ "$@" == *"-h"* ]] || [[ "$@" == *"--help"* ]] ); then
+  configfile_helptext
+  exit
+elif [[ "$@" == *"-h"* ]] || [[ "$@" == *"--help"* ]]; then
   helptext
   exit
 elif [[ "$@" == *"-v"* ]] || [[ "$@" == *"--version"* ]]; then
@@ -548,7 +618,10 @@ elif [[ "$@" == *"-v"* ]] || [[ "$@" == *"--version"* ]]; then
 elif [[ "$@" == *"-d"* ]]; then
   showdefaultpws
   exit
+elif [[ "$@" == *"-c "* ]]; then
+  read_configfile "$@"
 fi
+
 
 
 for i in "$@"; do
@@ -564,6 +637,9 @@ for i in "$@"; do
     -s)
       includeswitches=1
       shift # past argument=value
+      ;;
+    -c)
+      shift # dummy entry as the c flag is already handled by this stage
       ;;
     mps=*)
       esximgmtpwsame="${i#*=}"
@@ -768,7 +844,7 @@ done
 if [ $externalvcenter = 0 ]; then
   endmessage="${endmessage}"$'\n'$"The passwords for 'vCenter Server root' and 'vCenter Server administrator' are"
   endmessage="${endmessage}"$'\n'$"the same. See item 3 in the section 'Password restrictions' of the following URL"
-  endmessage="${endmessage}"$'\n'$"which was confirmed to work on 21 June 2024:"
+  endmessage="${endmessage}"$'\n'$"which was confirmed to work on 27 November 2024:"
   endmessage="${endmessage}"$'\n'$"https://www.dell.com/support/kbdoc/en-au/000158231/vxrail-account-and-password-rules-in-vxrail"
 else
   endmessage="${endmessage}"$'\n'$"The 'vCenter Server management' account (or equivalent) may already exist on the"
